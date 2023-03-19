@@ -12,39 +12,75 @@ export class LocationsService {
     private readonly locationRepository: Repository<Location>,
   ) {}
 
-  async createLocation(address: string, parent?: Location): Promise<Location> {
-    const location = new Location();
-    location.address = address;
-    location.parent = parent;
+  async createLocation(location: Location): Promise<Location> {
     return this.locationRepository.save(location);
   }
 
-  async importCsv(file: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-      fs.createReadStream(file)
-        .pipe(csvParser())
-        .on('data', async (row) => {
-          const addressParts = row.address.split(':');
-          let parent = null;
-          for (let i = 0; i < addressParts.length; i++) {
-            const addressPart = addressParts[i];
-            const existingLocation = await this.locationRepository.findOne({
-              where: { address: addressPart },
-              relations: ['parent'],
-            });
-            if (existingLocation) {
-              parent = existingLocation;
-            } else {
-              parent = await this.createLocation(addressPart, parent);
-            }
-          }
-        })
-        .on('end', () => {
-          resolve();
-        })
-        .on('error', (error) => {
-          reject(error);
-        });
+  async excuteCreateLocation(dataSource: Location[]): Promise<void> {
+    dataSource = await dataSource.map((location: Location) => {
+      const locationNumArr = location.loca_number.split(/-/);
+      location.level = locationNumArr.length - 1;
+      return location;
     });
+    dataSource = await dataSource.sort((a: Location, b: Location) => {
+      return a.level - b.level;
+    });
+    const execute = (i) => {
+      if (i == dataSource.length) return;
+      const locationNumArr = dataSource[i].loca_number.split(/-/);
+      const parentLocaNum = locationNumArr.slice(0, -1).join('-');
+      this.locationRepository
+        .findOne({
+          where: { loca_number: parentLocaNum },
+          relations: ['parent'],
+        })
+        .then(async (data) => {
+          if (data) {
+            dataSource[i].parent = data;
+            await this.createLocation(dataSource[i]).finally(() =>
+              execute(i + 1),
+            );
+          } else {
+            dataSource[i].parent = null;
+            await this.createLocation(dataSource[i]).finally(() =>
+              execute(i + 1),
+            );
+          }
+        });
+    };
+    execute(0);
+  }
+
+  async importCsv(file: string): Promise<void> {
+    const HeaderMap = {
+      LOCATION_NUMBER: 'loca_number',
+      LOCATION_NAME: 'loca_name',
+      AREA: 'area',
+      'DESCRIPTION_(DATABASE_IGNORE)': 'description',
+      BUILDING: 'building',
+    };
+    // eslint-disable-next-line prefer-const
+    let dataSource: Location[] = [];
+    await fs
+      .createReadStream(file)
+      .pipe(
+        csvParser({
+          mapHeaders({ header }) {
+            return HeaderMap[header.replace(/ /gi, '_').toUpperCase().trim()];
+          },
+          mapValues({ value }) {
+            return value.trim();
+          },
+        }),
+      )
+      .on('data', async (location: Location) => {
+        await dataSource.push(location);
+      })
+      .on('end', async () => {
+        this.excuteCreateLocation(dataSource);
+      })
+      .on('error', (error) => {
+        throw new Error(error.message);
+      });
   }
 }

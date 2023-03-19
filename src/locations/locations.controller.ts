@@ -1,5 +1,7 @@
 import {
   Controller,
+  HttpException,
+  HttpStatus,
   Post,
   UploadedFile,
   UseInterceptors,
@@ -12,15 +14,18 @@ export class LocationsController {
   constructor(private readonly locationsService: LocationsService) {}
 
   @Post('import')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(
+    FileInterceptor('file', {
+      dest: './files',
+    }),
+  )
   async import(@UploadedFile() file): Promise<void> {
-    console.log(
-      '🚀 ~ file: locations.controller.ts:17 ~ LocationsController ~ import ~ file:',
-      file,
-    );
-    return this.locationsService.importCsv(file);
+    if (!file) {
+      throw new HttpException(
+        'File is required to import',
+        HttpStatus.FORBIDDEN,
+      );
+    }
+    return this.locationsService.importCsv(file.path);
   }
-  // async import(): Promise<string> {
-  //   return Promise.resolve('Hello!');
-  // }
 }
