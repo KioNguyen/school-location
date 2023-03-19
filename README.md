@@ -33,3 +33,11 @@ $ yarn run test:cov
 ## Sample
 
 Check file sample in folder `files`
+
+## Tech stack
+
+- Framework - [NESTJS](https://nestjs.com/)
+- Database - [POSTGRESQL](#)
+- Logger - [WINSTON](#)
+- Libraries - [CSV-parse](#), [TypeORM](#), ...
+- Test - [JEST](#),
