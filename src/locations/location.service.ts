@@ -17,12 +17,12 @@ export class LocationsService {
   }
 
   async excuteCreateLocation(dataSource: Location[]): Promise<void> {
-    dataSource = await dataSource.map((location: Location) => {
+    dataSource = dataSource.map((location: Location) => {
       const locationNumArr = location.loca_number.split(/-/);
       location.level = locationNumArr.length - 1;
       return location;
     });
-    dataSource = await dataSource.sort((a: Location, b: Location) => {
+    dataSource.sort((a: Location, b: Location) => {
       return a.level - b.level;
     });
     const execute = (i) => {
@@ -61,8 +61,7 @@ export class LocationsService {
     };
     // eslint-disable-next-line prefer-const
     let dataSource: Location[] = [];
-    await fs
-      .createReadStream(file)
+    fs.createReadStream(file)
       .pipe(
         csvParser({
           mapHeaders({ header }) {
