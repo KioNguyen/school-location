@@ -1,11 +1,14 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { WinstonModule } from 'nest-winston';
 import { Location } from './locations/location.entity';
 import { LocationsModule } from './locations/locations.module';
 import { AppService } from './app.service';
 import { ConfigModule } from '@nestjs/config';
+import loggerConfig from './loger.config';
 @Module({
   imports: [
+    WinstonModule.forRoot(loggerConfig),
     ConfigModule.forRoot({ envFilePath: `.env` }),
     TypeOrmModule.forRoot({
       type: 'postgres',
